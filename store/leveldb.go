@@ -29,22 +29,27 @@ func newLevelDB(path string) (DB, error) {
 	return s, nil
 }
 
-func (s *levelDB) Get(key string) (string, error) {
+func (s *levelDB) Get(key string) (map[string]interface{}, error) {
 	value, err := s.db.Get([]byte(key), nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	vo := &valueModel{}
 	err = yaml.Unmarshal(value, &vo)
 	if err != nil {
 		backgroundDelKey(s, key)
-		return "", err
+		return nil, err
 	}
 	if vo.DDL > 0 && time.Now().Unix() > vo.DDL {
 		backgroundDelKey(s, key)
-		return "", nil
+		return nil, nil
 	}
-	return vo.Content, nil
+	vm := make(map[string]interface{}, 3)
+	vm["value"] = vo.Content
+	if vo.DDL > 0 {
+		vm["ddl"] = vo.DDL
+	}
+	return vm, nil
 }
 
 func (s *levelDB) Put(key string, value string, ddl int64) error {
@@ -63,10 +68,14 @@ func (s *levelDB) Delete(key string) error {
 	return s.db.Delete([]byte(key), nil)
 }
 
-func (s *levelDB) List(keyPrefix string, limit int64) (map[string]string, error) {
+func (s *levelDB) List(keyPrefix string, limit int64) (map[string]map[string]interface{}, error) {
 	var deleteKeys []string
 	var i int64 = 0
-	var kvs = make(map[string]string, limit)
+	var mapInitLimit int64 = 100
+	if limit > 0 {
+		mapInitLimit = limit
+	}
+	var kvs = make(map[string]map[string]interface{}, mapInitLimit)
 	var bytesPrefix *util.Range = nil
 	if len(keyPrefix) > 0 {
 		bytesPrefix = util.BytesPrefix([]byte(keyPrefix))
@@ -88,7 +97,12 @@ func (s *levelDB) List(keyPrefix string, limit int64) (map[string]string, error)
 			deleteKeys = append(deleteKeys, key)
 			continue
 		}
-		kvs[key] = vo.Content
+		vm := make(map[string]interface{}, 3)
+		vm["value"] = vo.Content
+		if vo.DDL > 0 {
+			vm["ddl"] = vo.DDL
+		}
+		kvs[key] = vm
 	}
 	iter.Release()
 	for _, k := range deleteKeys {

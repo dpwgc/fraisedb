@@ -1,15 +1,16 @@
 package service
 
 import (
-	"FraiseDB/base"
-	"FraiseDB/cluster"
 	"fmt"
+	"fraisedb/base"
+	"fraisedb/cluster"
 	"github.com/syndtr/goleveldb/leveldb/errors"
 )
 
 // StartNode 启动节点
 func StartNode() {
 	err := error(nil)
+	base.Channel = make(chan []byte, 1000)
 	base.Node, base.NodeDB, err = cluster.StartNode(base.Config().Node.First,
 		fmt.Sprintf("%s:%v", base.Config().Node.Addr, base.Config().Node.TcpPort),
 		base.Config().Node.LogStore,

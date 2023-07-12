@@ -1,8 +1,8 @@
 package http
 
 import (
-	"FraiseDB/base"
 	"encoding/json"
+	"fraisedb/base"
 	"io"
 	"net/http"
 )

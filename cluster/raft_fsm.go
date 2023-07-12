@@ -1,12 +1,13 @@
 package cluster
 
 import (
-	"FraiseDB/base"
-	"FraiseDB/store"
+	"fraisedb/base"
+	"fraisedb/store"
 	"github.com/hashicorp/raft"
 	"gopkg.in/yaml.v3"
 	"io"
 	"sync"
+	"time"
 )
 
 var mutex sync.Mutex
@@ -34,6 +35,9 @@ func (c *StorageFSM) Apply(log *raft.Log) interface{} {
 		base.LogHandler.Println(base.LogErrorTag, err)
 		return nil
 	}
+	if al.DDL > 0 && time.Now().Unix() > al.DDL {
+		return nil
+	}
 	if al.Method == 1 {
 		err = base.NodeDB.Put(al.Key, al.Value, al.DDL)
 	} else {
@@ -41,6 +45,9 @@ func (c *StorageFSM) Apply(log *raft.Log) interface{} {
 	}
 	if err != nil {
 		base.LogHandler.Println(base.LogErrorTag, err)
+	}
+	if time.Now().Unix()-base.ConnectTimeout <= log.AppendedAt.Unix() {
+		base.Channel <- log.Data
 	}
 	return nil
 }

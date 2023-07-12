@@ -1,9 +1,9 @@
 package main
 
 import (
-	"FraiseDB/api/http"
-	"FraiseDB/base"
-	"FraiseDB/service"
+	"fraisedb/api/http"
+	"fraisedb/base"
+	"fraisedb/service"
 )
 
 func main() {

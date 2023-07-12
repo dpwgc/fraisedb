@@ -1,14 +1,15 @@
 package cluster
 
 import (
-	"FraiseDB/base"
-	"FraiseDB/store"
+	"fraisedb/base"
+	"fraisedb/store"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
 	raftBoltDB "github.com/hashicorp/raft-boltdb"
 	"gopkg.in/yaml.v3"
 	"net"
 	"os"
+	"time"
 )
 
 func StartNode(first bool, localAddr string, logStorePath string, stableStorePath string, snapshotStorePath string, kvStorePath string) (*raft.Raft, store.DB, error) {
@@ -37,7 +38,7 @@ func StartNode(first bool, localAddr string, logStorePath string, stableStorePat
 		return nil, nil, err
 	}
 
-	transport, err := raft.NewTCPTransport(localAddr, localAddress, 3, base.ConnectTimeout, os.Stderr)
+	transport, err := raft.NewTCPTransport(localAddr, localAddress, 3, base.ConnectTimeout*time.Second, os.Stderr)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -66,15 +67,15 @@ func StartNode(first bool, localAddr string, logStorePath string, stableStorePat
 }
 
 func AddNode(leader *raft.Raft, newNodeAddr string) error {
-	f := leader.AddVoter(raft.ServerID(newNodeAddr), raft.ServerAddress(newNodeAddr), 0, base.ConnectTimeout)
+	f := leader.AddVoter(raft.ServerID(newNodeAddr), raft.ServerAddress(newNodeAddr), 0, base.ConnectTimeout*time.Second)
 	return f.Error()
 }
 
 type ApplyLogModel struct {
-	Method int    `yaml:"m"`
-	Key    string `yaml:"k"`
-	Value  string `yaml:"v"`
-	DDL    int64  `yaml:"d"`
+	Method int    `yaml:"m" json:"method"`
+	Key    string `yaml:"k" json:"key"`
+	Value  string `yaml:"v" json:"value"`
+	DDL    int64  `yaml:"d" json:"ddl"`
 }
 
 func ApplyLog(node *raft.Raft, method int, key string, value string, ddl int64) error {
@@ -90,6 +91,6 @@ func ApplyLog(node *raft.Raft, method int, key string, value string, ddl int64) 
 	}
 	node.ApplyLog(raft.Log{
 		Data: marshal,
-	}, base.ConnectTimeout)
+	}, base.ConnectTimeout*time.Second)
 	return nil
 }

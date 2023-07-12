@@ -1,9 +1,9 @@
 package http
 
 import (
-	"FraiseDB/base"
-	"FraiseDB/service"
 	"fmt"
+	"fraisedb/base"
+	"fraisedb/service"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"strconv"
@@ -22,7 +22,9 @@ func InitRouter() {
 	r.GET("/kv/:key", getKV)
 	r.DELETE("/kv/:key", delKV)
 	r.GET("/kvs", listKV)
+	r.GET("/kvs/subscribe/:keyPrefix/:connId", subscribe)
 
+	initEventConsumer()
 	err := http.ListenAndServe(port, r)
 	if err != nil {
 		base.LogHandler.Println(base.LogErrorTag, err)
