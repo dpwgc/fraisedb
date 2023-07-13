@@ -12,11 +12,6 @@ type levelDB struct {
 	db *leveldb.DB
 }
 
-type valueModel struct {
-	Content string `yaml:"c"`
-	DDL     int64  `yaml:"d"`
-}
-
 func newLevelDB(path string) (DB, error) {
 	db, err := leveldb.OpenFile(path, nil)
 	if err != nil {
@@ -29,35 +24,30 @@ func newLevelDB(path string) (DB, error) {
 	return s, nil
 }
 
-func (s *levelDB) Get(key string) (map[string]interface{}, error) {
+func (s *levelDB) Get(key string) (ValueModel, error) {
+	vm := ValueModel{}
 	value, err := s.db.Get([]byte(key), nil)
 	if err != nil {
-		return nil, err
+		return vm, err
 	}
-	vo := &valueModel{}
-	err = yaml.Unmarshal(value, &vo)
+	err = yaml.Unmarshal(value, &vm)
 	if err != nil {
 		backgroundDelKey(s, key)
-		return nil, err
+		return vm, err
 	}
-	if vo.DDL > 0 && time.Now().Unix() > vo.DDL {
+	if vm.DDL > 0 && time.Now().Unix() > vm.DDL {
 		backgroundDelKey(s, key)
-		return nil, nil
-	}
-	vm := make(map[string]interface{}, 3)
-	vm["value"] = vo.Content
-	if vo.DDL > 0 {
-		vm["ddl"] = vo.DDL
+		return vm, nil
 	}
 	return vm, nil
 }
 
 func (s *levelDB) Put(key string, value string, ddl int64) error {
-	vo := valueModel{
-		Content: value,
-		DDL:     ddl,
+	vm := ValueModel{
+		Value: value,
+		DDL:   ddl,
 	}
-	marshal, err := yaml.Marshal(vo)
+	marshal, err := yaml.Marshal(vm)
 	if err != nil {
 		return err
 	}
@@ -68,14 +58,14 @@ func (s *levelDB) Delete(key string) error {
 	return s.db.Delete([]byte(key), nil)
 }
 
-func (s *levelDB) List(keyPrefix string, limit int64) (map[string]map[string]interface{}, error) {
+func (s *levelDB) List(keyPrefix string, limit int64) (map[string]ValueModel, error) {
 	var deleteKeys []string
 	var i int64 = 0
 	var mapInitLimit int64 = 100
 	if limit > 0 {
 		mapInitLimit = limit
 	}
-	var kvs = make(map[string]map[string]interface{}, mapInitLimit)
+	var kvs = make(map[string]ValueModel, mapInitLimit)
 	var bytesPrefix *util.Range = nil
 	if len(keyPrefix) > 0 {
 		bytesPrefix = util.BytesPrefix([]byte(keyPrefix))
@@ -86,21 +76,16 @@ func (s *levelDB) List(keyPrefix string, limit int64) (map[string]map[string]int
 		if i > limit && limit > 0 {
 			break
 		}
-		vo := &valueModel{}
+		vm := ValueModel{}
 		key := string(iter.Key())
-		err := yaml.Unmarshal(iter.Value(), &vo)
+		err := yaml.Unmarshal(iter.Value(), &vm)
 		if err != nil {
 			deleteKeys = append(deleteKeys, key)
 			continue
 		}
-		if vo.DDL > 0 && time.Now().Unix() > vo.DDL {
+		if vm.DDL > 0 && time.Now().Unix() > vm.DDL {
 			deleteKeys = append(deleteKeys, key)
 			continue
-		}
-		vm := make(map[string]interface{}, 3)
-		vm["value"] = vo.Content
-		if vo.DDL > 0 {
-			vm["ddl"] = vo.DDL
 		}
 		kvs[key] = vm
 	}
@@ -126,14 +111,14 @@ func backgroundClean(s *levelDB) {
 	var deleteKeys []string
 	iter := s.db.NewIterator(nil, nil)
 	for iter.Next() {
-		vo := &valueModel{}
+		vm := ValueModel{}
 		key := string(iter.Key())
-		err := yaml.Unmarshal(iter.Value(), &vo)
+		err := yaml.Unmarshal(iter.Value(), &vm)
 		if err != nil {
 			deleteKeys = append(deleteKeys, key)
 			continue
 		}
-		if vo.DDL > 0 && time.Now().Unix() > vo.DDL {
+		if vm.DDL > 0 && time.Now().Unix() > vm.DDL {
 			deleteKeys = append(deleteKeys, key)
 			continue
 		}

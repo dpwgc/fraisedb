@@ -18,11 +18,11 @@ func InitRouter() {
 	r := httprouter.New()
 
 	r.POST("/node", addNode)
-	r.PUT("/kv", putKV)
+	r.PUT("/kv/:key", putKV)
 	r.GET("/kv/:key", getKV)
 	r.DELETE("/kv/:key", delKV)
-	r.GET("/kvs", listKV)
-	r.GET("/kvs/subscribe/:keyPrefix/:connId", subscribe)
+	r.GET("/kvs/:keyPrefix", listKV)
+	r.GET("/subscribe/:keyPrefix", subscribe)
 
 	initEventConsumer()
 	err := http.ListenAndServe(port, r)
@@ -47,6 +47,7 @@ func addNode(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 }
 
 func putKV(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	key := p.ByName("key")
 	command, err := readKVCommand(r)
 	if err != nil {
 		result(w, false, nil, err.Error())
@@ -56,7 +57,7 @@ func putKV(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	if command.TTL > 0 {
 		ddl = time.Now().Unix() + command.TTL
 	}
-	err = service.PutKV(command.Key, command.Value, ddl)
+	err = service.PutKV(key, command.Value, ddl)
 	if err != nil {
 		result(w, false, nil, err.Error())
 		return
@@ -85,7 +86,7 @@ func delKV(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 }
 
 func listKV(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-	keyPrefix := r.URL.Query().Get("keyPrefix")
+	keyPrefix := p.ByName("keyPrefix")
 	limitStr := r.URL.Query().Get("limit")
 	limit, err := strconv.ParseInt(limitStr, 10, 64)
 	if err != nil {

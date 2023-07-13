@@ -28,7 +28,7 @@ var connMap = make(map[string]connInfo, 1000)
 func subscribe(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 
 	keyPrefix := p.ByName("keyPrefix")
-	connId := p.ByName("connId")
+	connId := base.ID()
 
 	upGrader.CheckOrigin = func(r *http.Request) bool { return true }
 
@@ -95,11 +95,11 @@ func broadcast(msg []byte) {
 		return
 	}
 	for _, ci := range connMap {
-		go push(ci, msg, al)
+		go push(ci, al)
 	}
 }
 
-func push(ci connInfo, msg []byte, al cluster.ApplyLogModel) {
+func push(ci connInfo, al cluster.ApplyLogModel) {
 	err := error(nil)
 	defer func() {
 		if err != nil {
@@ -114,14 +114,14 @@ func push(ci connInfo, msg []byte, al cluster.ApplyLogModel) {
 	}()
 	if len(ci.KeyPrefix) == 0 {
 		// 回写请求
-		if err = ci.Conn.WriteMessage(1, msg); err != nil {
+		if err = ci.Conn.WriteJSON(al); err != nil {
 			base.LogHandler.Println(base.LogErrorTag, err)
 		}
 		return
 	}
 	if strings.HasPrefix(al.Key, ci.KeyPrefix) {
 		// 回写请求
-		if err = ci.Conn.WriteMessage(1, msg); err != nil {
+		if err = ci.Conn.WriteJSON(al); err != nil {
 			base.LogHandler.Println(base.LogErrorTag, err)
 		}
 	}
