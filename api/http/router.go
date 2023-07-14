@@ -18,12 +18,17 @@ func InitRouter() {
 	r := httprouter.New()
 
 	r.POST("/node", addNode)
-	r.DELETE("/node/:address", removeNode)
 	r.GET("/leader", getLeader)
+
+	r.POST("/namespace/:namespace", createNamespace)
+	r.GET("/namespaces", listNamespace)
+	r.DELETE("/namespace/:namespace", deleteNamespace)
+
 	r.PUT("/kv/:namespace/:key", putKV)
 	r.GET("/kv/:namespace/:key", getKV)
-	r.DELETE("/kv/:namespace/:key", delKV)
+	r.DELETE("/kv/:namespace/:key", deleteKV)
 	r.GET("/kvs/:namespace/:keyPrefix", listKV)
+
 	r.GET("/subscribe/:namespace/:keyPrefix", subscribe)
 
 	initConsumer()
@@ -48,9 +53,19 @@ func addNode(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	result(w, true, nil, "")
 }
 
-func removeNode(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-	address := p.ByName("address")
-	err := service.RemoveNode(address)
+func getLeader(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	leader := service.GetLeader()
+	result(w, true, leader, "")
+}
+
+func listNamespace(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	ns := service.ListNamespace()
+	result(w, true, ns, "")
+}
+
+func createNamespace(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	namespace := p.ByName("namespace")
+	err := service.CreateNamespace(namespace)
 	if err != nil {
 		result(w, false, nil, err.Error())
 		return
@@ -58,9 +73,14 @@ func removeNode(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	result(w, true, nil, "")
 }
 
-func getLeader(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-	leader := service.GetLeader()
-	result(w, true, leader, "")
+func deleteNamespace(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	namespace := p.ByName("namespace")
+	err := service.DeleteNamespace(namespace)
+	if err != nil {
+		result(w, false, nil, err.Error())
+		return
+	}
+	result(w, true, nil, "")
 }
 
 func putKV(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
@@ -94,7 +114,7 @@ func getKV(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	result(w, true, value, "")
 }
 
-func delKV(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+func deleteKV(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	namespace := p.ByName("namespace")
 	key := p.ByName("key")
 	err := service.DeleteKV(namespace, key)

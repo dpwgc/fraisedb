@@ -6,6 +6,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"gopkg.in/yaml.v3"
+	"os"
 	"sync"
 	"time"
 )
@@ -16,6 +17,8 @@ type levelDB struct {
 	dbMap map[string]*leveldb.DB
 }
 
+var namespaceLock sync.Mutex
+
 func newLevelDB(path string) (DB, error) {
 	s := &levelDB{
 		path:  path,
@@ -23,6 +26,44 @@ func newLevelDB(path string) (DB, error) {
 	}
 	go backgroundCleanTask(s)
 	return s, nil
+}
+
+func (s *levelDB) ListNamespace() []string {
+	var ns []string
+	for n, _ := range s.dbMap {
+		ns = append(ns, n)
+	}
+	return ns
+}
+
+func (s *levelDB) CreateNamespace(namespace string) error {
+	if s.dbMap[namespace] == nil {
+		namespaceLock.Lock()
+		db, err := leveldb.OpenFile(fmt.Sprintf("%s/%s", s.path, namespace), nil)
+		if err != nil {
+			return err
+		}
+		s.dbMap[namespace] = db
+		namespaceLock.Unlock()
+	}
+	return nil
+}
+
+func (s *levelDB) DeleteNamespace(namespace string) error {
+	if s.dbMap[namespace] != nil {
+		namespaceLock.Lock()
+		err := s.dbMap[namespace].Close()
+		if err != nil {
+			return err
+		}
+		err = os.RemoveAll(fmt.Sprintf("%s/%s", s.path, namespace))
+		if err != nil {
+			return err
+		}
+		delete(s.dbMap, namespace)
+		namespaceLock.Unlock()
+	}
+	return nil
 }
 
 func (s *levelDB) GetKV(namespace string, key string) (ValueModel, error) {
@@ -44,9 +85,8 @@ func (s *levelDB) GetKV(namespace string, key string) (ValueModel, error) {
 }
 
 func (s *levelDB) PutKV(namespace string, key string, value string, ddl int64) error {
-	err := autoCreateNamespace(s, namespace)
-	if err != nil {
-		return errors.New("namespace create error")
+	if s.dbMap[namespace] == nil {
+		return errors.New("namespace does not exist")
 	}
 	vm := ValueModel{
 		Value: value,
@@ -60,9 +100,8 @@ func (s *levelDB) PutKV(namespace string, key string, value string, ddl int64) e
 }
 
 func (s *levelDB) DeleteKV(namespace string, key string) error {
-	err := autoCreateNamespace(s, namespace)
-	if err != nil {
-		return errors.New("namespace create error")
+	if s.dbMap[namespace] == nil {
+		return errors.New("namespace does not exist")
 	}
 	return s.dbMap[namespace].Delete([]byte(key), nil)
 }
@@ -138,19 +177,4 @@ func backgroundClean(db *leveldb.DB) {
 	for _, k := range deleteKeys {
 		backgroundDelKey(db, k)
 	}
-}
-
-var namespaceLock sync.Mutex
-
-func autoCreateNamespace(s *levelDB, namespace string) error {
-	if s.dbMap[namespace] == nil {
-		namespaceLock.Lock()
-		db, err := leveldb.OpenFile(fmt.Sprintf("%s/%s", s.path, namespace), nil)
-		if err != nil {
-			return err
-		}
-		s.dbMap[namespace] = db
-		namespaceLock.Unlock()
-	}
-	return nil
 }

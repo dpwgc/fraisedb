@@ -10,6 +10,9 @@ type ValueModel struct {
 }
 
 type DB interface {
+	ListNamespace() []string
+	CreateNamespace(namespace string) error
+	DeleteNamespace(namespace string) error
 	GetKV(namespace string, key string) (ValueModel, error)
 	PutKV(namespace string, key string, value string, ddl int64) error
 	DeleteKV(namespace string, key string) error

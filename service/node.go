@@ -10,13 +10,19 @@ import (
 
 // StartNode 启动节点
 func StartNode() {
+	base.Channel = make(chan []byte, 1000)
 	err := base.CreatePath(base.Config().Store.Data)
 	if err != nil {
 		base.LogHandler.Println(base.LogErrorTag, err)
 		panic(err)
 	}
-	base.Channel = make(chan []byte, 1000)
-	base.NodeDB, err = store.NewDB(fmt.Sprintf("%s/kv", base.Config().Store.Data))
+	kvPath := fmt.Sprintf("%s/kv", base.Config().Store.Data)
+	err = base.CreatePath(kvPath)
+	if err != nil {
+		base.LogHandler.Println(base.LogErrorTag, err)
+		panic(err)
+	}
+	base.NodeDB, err = store.NewDB(kvPath)
 	if err != nil {
 		base.LogHandler.Println(base.LogErrorTag, err)
 		panic(err)
@@ -41,10 +47,6 @@ func AddNode(addr string, port int) error {
 		return errors.New("port <= 0")
 	}
 	return cluster.AddNode(base.Node, fmt.Sprintf("%s:%v", addr, port))
-}
-
-func RemoveNode(nodeAddr string) error {
-	return cluster.RemoveNode(base.Node, nodeAddr)
 }
 
 func GetLeader() string {

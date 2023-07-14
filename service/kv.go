@@ -7,6 +7,24 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/errors"
 )
 
+func ListNamespace() []string {
+	return base.NodeDB.ListNamespace()
+}
+
+func CreateNamespace(namespace string) error {
+	if len(namespace) == 0 {
+		return errors.New("len(namespace) == 0")
+	}
+	return cluster.ApplyLog(base.Node, namespace, 11, "", "", 0)
+}
+
+func DeleteNamespace(namespace string) error {
+	if len(namespace) == 0 {
+		return errors.New("len(namespace) == 0")
+	}
+	return cluster.ApplyLog(base.Node, namespace, 10, "", "", 0)
+}
+
 func GetKV(namespace string, key string) (store.ValueModel, error) {
 	if len(namespace) == 0 {
 		return store.ValueModel{}, errors.New("len(namespace) == 0")

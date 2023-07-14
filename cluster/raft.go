@@ -70,17 +70,13 @@ func AddNode(leader *raft.Raft, nodeAddr string) error {
 	return f.Error()
 }
 
-func RemoveNode(leader *raft.Raft, nodeAddr string) error {
-	f := leader.RemoveServer(raft.ServerID(nodeAddr), 0, base.ConnectTimeout*time.Second)
-	return f.Error()
-}
-
 func GetLeader(node *raft.Raft) string {
 	addr, _ := node.LeaderWithID()
 	return string(addr)
 }
 
 type ApplyLogModel struct {
+	// 0-删除key、1-新建key、10-删除namespace、11-新建namespace
 	Method    int    `yaml:"m" json:"method"`
 	Namespace string `yaml:"n" json:"namespace"`
 	Key       string `yaml:"k" json:"key"`
