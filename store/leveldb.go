@@ -27,10 +27,6 @@ func newLevelDB(path string) (DB, error) {
 
 func (s *levelDB) GetKV(namespace string, key string) (ValueModel, error) {
 	vm := ValueModel{}
-	err := autoCreateNamespace(s, namespace)
-	if err != nil {
-		return vm, errors.New("namespace create error")
-	}
 	value, err := s.dbMap[namespace].Get([]byte(key), nil)
 	if err != nil {
 		return vm, err
@@ -72,10 +68,6 @@ func (s *levelDB) DeleteKV(namespace string, key string) error {
 }
 
 func (s *levelDB) ListKV(namespace string, keyPrefix string, limit int64) (map[string]ValueModel, error) {
-	err := autoCreateNamespace(s, namespace)
-	if err != nil {
-		return nil, errors.New("namespace create error")
-	}
 	var deleteKeys []string
 	var i int64 = 0
 	var mapInitLimit int64 = 100
