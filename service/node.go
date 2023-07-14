@@ -9,14 +9,18 @@ import (
 
 // StartNode 启动节点
 func StartNode() {
-	err := error(nil)
+	err := base.CreatePath(base.Config().Store.Data)
+	if err != nil {
+		base.LogHandler.Println(base.LogErrorTag, err)
+		panic(err)
+	}
 	base.Channel = make(chan []byte, 1000)
 	base.Node, base.NodeDB, err = cluster.StartNode(base.Config().Node.First,
 		fmt.Sprintf("%s:%v", base.Config().Node.Addr, base.Config().Node.TcpPort),
-		base.Config().Store.Data+"/log",
-		base.Config().Store.Data+"/stable",
-		base.Config().Store.Data+"/snapshot",
-		base.Config().Store.Data+"/kv")
+		fmt.Sprintf("%s/log", base.Config().Store.Data),
+		fmt.Sprintf("%s/stable", base.Config().Store.Data),
+		fmt.Sprintf("%s/snapshot", base.Config().Store.Data),
+		fmt.Sprintf("%s/kv", base.Config().Store.Data))
 	if err != nil {
 		base.LogHandler.Println(base.LogErrorTag, err)
 		panic(err)
