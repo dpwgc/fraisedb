@@ -6,23 +6,20 @@ import (
 )
 
 type ConfigModel struct {
-	Node NodeConfig `yaml:"node"`
-	Log  LogConfig  `yaml:"log"`
+	Node  NodeConfig  `yaml:"node"`
+	Store StoreConfig `yaml:"store"`
 }
 
 type NodeConfig struct {
-	First         bool   `yaml:"first"`
-	Addr          string `yaml:"addr"`
-	TcpPort       int    `yaml:"tcpPort"`
-	HttpPort      int    `yaml:"httpPort"`
-	LogStore      string `yaml:"logStore"`
-	StableStore   string `yaml:"stableStore"`
-	SnapshotStore string `yaml:"snapshotStore"`
-	KVStore       string `yaml:"kvStore"`
+	First    bool   `yaml:"first"`
+	Addr     string `yaml:"addr"`
+	TcpPort  int    `yaml:"tcpPort"`
+	HttpPort int    `yaml:"httpPort"`
 }
 
-type LogConfig struct {
-	Path string `yaml:"path"`
+type StoreConfig struct {
+	Data string `yaml:"data"`
+	Log  string `yaml:"log"`
 }
 
 // InitConfig 加载配置

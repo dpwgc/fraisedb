@@ -66,9 +66,19 @@ func StartNode(first bool, localAddr string, logStorePath string, stableStorePat
 	return r, db, nil
 }
 
-func AddNode(leader *raft.Raft, newNodeAddr string) error {
-	f := leader.AddVoter(raft.ServerID(newNodeAddr), raft.ServerAddress(newNodeAddr), 0, base.ConnectTimeout*time.Second)
+func AddNode(leader *raft.Raft, nodeAddr string) error {
+	f := leader.AddVoter(raft.ServerID(nodeAddr), raft.ServerAddress(nodeAddr), 0, base.ConnectTimeout*time.Second)
 	return f.Error()
+}
+
+func RemoveNode(leader *raft.Raft, nodeAddr string) error {
+	f := leader.RemoveServer(raft.ServerID(nodeAddr), 0, base.ConnectTimeout*time.Second)
+	return f.Error()
+}
+
+func GetLeader(node *raft.Raft) string {
+	addr, _ := node.LeaderWithID()
+	return string(addr)
 }
 
 type ApplyLogModel struct {

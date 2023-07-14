@@ -3,9 +3,6 @@ node:
   addr: 127.0.0.1
   tcpPort: 7999
   httpPort: 8000
-  logStore: ./data/raft_log
-  stableStore: ./data/raft_stable
-  snapshotStore: ./data/snapshot
-  kvStore: ./data/kv
-log:
-  path: ./log
+store:
+  data: ./data
+  log: ./log

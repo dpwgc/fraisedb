@@ -13,10 +13,10 @@ func StartNode() {
 	base.Channel = make(chan []byte, 1000)
 	base.Node, base.NodeDB, err = cluster.StartNode(base.Config().Node.First,
 		fmt.Sprintf("%s:%v", base.Config().Node.Addr, base.Config().Node.TcpPort),
-		base.Config().Node.LogStore,
-		base.Config().Node.StableStore,
-		base.Config().Node.SnapshotStore,
-		base.Config().Node.KVStore)
+		base.Config().Store.Data+"/log",
+		base.Config().Store.Data+"/stable",
+		base.Config().Store.Data+"/snapshot",
+		base.Config().Store.Data+"/kv")
 	if err != nil {
 		base.LogHandler.Println(base.LogErrorTag, err)
 		panic(err)
@@ -32,4 +32,12 @@ func AddNode(addr string, port int) error {
 		return errors.New("port <= 0")
 	}
 	return cluster.AddNode(base.Node, fmt.Sprintf("%s:%v", addr, port))
+}
+
+func RemoveNode(nodeAddr string) error {
+	return cluster.RemoveNode(base.Node, nodeAddr)
+}
+
+func GetLeader() string {
+	return cluster.GetLeader(base.Node)
 }
