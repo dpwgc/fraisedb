@@ -152,15 +152,13 @@ var namespaceLock sync.Mutex
 
 func autoCreateNamespace(s *levelDB, namespace string) error {
 	if s.dbMap[namespace] == nil {
+		namespaceLock.Lock()
 		db, err := leveldb.OpenFile(fmt.Sprintf("%s/%s", s.path, namespace), nil)
 		if err != nil {
 			return err
 		}
-		if s.dbMap[namespace] == nil {
-			namespaceLock.Lock()
-			s.dbMap[namespace] = db
-			namespaceLock.Unlock()
-		}
+		s.dbMap[namespace] = db
+		namespaceLock.Unlock()
 	}
 	return nil
 }
