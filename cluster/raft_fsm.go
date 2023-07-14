@@ -33,10 +33,14 @@ func (c *StorageFSM) Apply(log *raft.Log) interface{} {
 	if al.DDL > 0 && time.Now().Unix() > al.DDL {
 		return nil
 	}
+	if err != nil {
+		base.LogHandler.Println(base.LogErrorTag, err)
+		return nil
+	}
 	if al.Method == 1 {
-		err = base.NodeDB.Put(al.Key, al.Value, al.DDL)
+		err = base.NodeDB.PutKV(al.Namespace, al.Key, al.Value, al.DDL)
 	} else {
-		err = base.NodeDB.Delete(al.Key)
+		err = base.NodeDB.DeleteKV(al.Namespace, al.Key)
 	}
 	if err != nil {
 		base.LogHandler.Println(base.LogErrorTag, err)

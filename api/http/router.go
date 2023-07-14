@@ -18,11 +18,13 @@ func InitRouter() {
 	r := httprouter.New()
 
 	r.POST("/node", addNode)
-	r.PUT("/kv/:key", putKV)
-	r.GET("/kv/:key", getKV)
-	r.DELETE("/kv/:key", delKV)
-	r.GET("/kvs/:keyPrefix", listKV)
-	r.GET("/subscribe/:keyPrefix", subscribe)
+	r.DELETE("/node/:address", removeNode)
+	r.GET("/leader", getLeader)
+	r.PUT("/kv/:namespace/:key", putKV)
+	r.GET("/kv/:namespace/:key", getKV)
+	r.DELETE("/kv/:namespace/:key", delKV)
+	r.GET("/kvs/:namespace/:keyPrefix", listKV)
+	r.GET("/subscribe/:namespace/:keyPrefix", subscribe)
 
 	initConsumer()
 	err := http.ListenAndServe(port, r)
@@ -46,7 +48,23 @@ func addNode(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	result(w, true, nil, "")
 }
 
+func removeNode(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	address := p.ByName("address")
+	err := service.RemoveNode(address)
+	if err != nil {
+		result(w, false, nil, err.Error())
+		return
+	}
+	result(w, true, nil, "")
+}
+
+func getLeader(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	leader := service.GetLeader()
+	result(w, true, leader, "")
+}
+
 func putKV(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	namespace := p.ByName("namespace")
 	key := p.ByName("key")
 	command, err := readKVCommand(r)
 	if err != nil {
@@ -57,7 +75,7 @@ func putKV(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	if command.TTL > 0 {
 		ddl = time.Now().Unix() + command.TTL
 	}
-	err = service.PutKV(key, command.Value, ddl)
+	err = service.PutKV(namespace, key, command.Value, ddl)
 	if err != nil {
 		result(w, false, nil, err.Error())
 		return
@@ -66,8 +84,9 @@ func putKV(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 }
 
 func getKV(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	namespace := p.ByName("namespace")
 	key := p.ByName("key")
-	value, err := service.GetKV(key)
+	value, err := service.GetKV(namespace, key)
 	if err != nil {
 		result(w, false, nil, err.Error())
 		return
@@ -76,8 +95,9 @@ func getKV(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 }
 
 func delKV(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	namespace := p.ByName("namespace")
 	key := p.ByName("key")
-	err := service.DeleteKV(key)
+	err := service.DeleteKV(namespace, key)
 	if err != nil {
 		result(w, false, nil, err.Error())
 		return
@@ -86,6 +106,7 @@ func delKV(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 }
 
 func listKV(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	namespace := p.ByName("namespace")
 	keyPrefix := p.ByName("keyPrefix")
 	limitStr := r.URL.Query().Get("limit")
 	limit, err := strconv.ParseInt(limitStr, 10, 64)
@@ -93,7 +114,7 @@ func listKV(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		result(w, false, nil, err.Error())
 		return
 	}
-	kvs, err := service.ListKV(keyPrefix, limit)
+	kvs, err := service.ListKV(namespace, keyPrefix, limit)
 	if err != nil {
 		result(w, false, nil, err.Error())
 		return

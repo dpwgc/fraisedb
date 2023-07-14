@@ -81,18 +81,20 @@ func GetLeader(node *raft.Raft) string {
 }
 
 type ApplyLogModel struct {
-	Method int    `yaml:"m" json:"method"`
-	Key    string `yaml:"k" json:"key"`
-	Value  string `yaml:"v" json:"value"`
-	DDL    int64  `yaml:"d" json:"ddl"`
+	Method    int    `yaml:"m" json:"method"`
+	Namespace string `yaml:"n" json:"namespace"`
+	Key       string `yaml:"k" json:"key"`
+	Value     string `yaml:"v" json:"value"`
+	DDL       int64  `yaml:"d" json:"ddl"`
 }
 
-func ApplyLog(node *raft.Raft, method int, key string, value string, ddl int64) error {
+func ApplyLog(node *raft.Raft, namespace string, method int, key string, value string, ddl int64) error {
 	log := ApplyLogModel{
-		Method: method,
-		Key:    key,
-		Value:  value,
-		DDL:    ddl,
+		Method:    method,
+		Namespace: namespace,
+		Key:       key,
+		Value:     value,
+		DDL:       ddl,
 	}
 	marshal, err := yaml.Marshal(log)
 	if err != nil {

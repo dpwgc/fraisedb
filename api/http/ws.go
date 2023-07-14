@@ -8,6 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"net/http"
 	"strings"
+	"sync"
 )
 
 var upGrader = websocket.Upgrader{
@@ -17,6 +18,7 @@ var upGrader = websocket.Upgrader{
 
 func subscribe(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 
+	namespace := p.ByName("namespace")
 	keyPrefix := p.ByName("keyPrefix")
 	connId := base.ID()
 
@@ -31,26 +33,29 @@ func subscribe(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	ci := base.ConnInfo{
 		ConnId:    connId,
 		Conn:      conn,
+		Namespace: namespace,
 		KeyPrefix: keyPrefix,
 	}
 
 	go listener(ci)
 }
 
+var connLock sync.Mutex
+
 func listener(ci base.ConnInfo) {
 
-	base.ConnLock.Lock()
+	connLock.Lock()
 	base.ConnMap[ci.ConnId] = ci
-	base.ConnLock.Unlock()
+	connLock.Unlock()
 
 	defer func() {
 		err := ci.Conn.Close()
 		if err != nil {
 			base.LogHandler.Println(base.LogErrorTag, err)
 		}
-		base.ConnLock.Lock()
+		connLock.Lock()
 		delete(base.ConnMap, ci.ConnId)
-		base.ConnLock.Unlock()
+		connLock.Unlock()
 	}()
 	for {
 		// 接收数据
@@ -97,22 +102,24 @@ func push(ci base.ConnInfo, al cluster.ApplyLogModel) {
 			if err != nil {
 				base.LogHandler.Println(base.LogErrorTag, err)
 			}
-			base.ConnLock.Lock()
+			connLock.Lock()
 			delete(base.ConnMap, ci.ConnId)
-			base.ConnLock.Unlock()
+			connLock.Unlock()
 		}
 	}()
-	if len(ci.KeyPrefix) == 0 {
-		// 回写请求
-		if err = ci.Conn.WriteJSON(al); err != nil {
-			base.LogHandler.Println(base.LogErrorTag, err)
+	if al.Namespace == ci.Namespace {
+		if len(ci.KeyPrefix) == 0 {
+			// 回写请求
+			if err = ci.Conn.WriteJSON(al); err != nil {
+				base.LogHandler.Println(base.LogErrorTag, err)
+			}
+			return
 		}
-		return
-	}
-	if strings.HasPrefix(al.Key, ci.KeyPrefix) {
-		// 回写请求
-		if err = ci.Conn.WriteJSON(al); err != nil {
-			base.LogHandler.Println(base.LogErrorTag, err)
+		if strings.HasPrefix(al.Key, ci.KeyPrefix) {
+			// 回写请求
+			if err = ci.Conn.WriteJSON(al); err != nil {
+				base.LogHandler.Println(base.LogErrorTag, err)
+			}
 		}
 	}
 }

@@ -10,8 +10,8 @@ type ValueModel struct {
 }
 
 type DB interface {
-	Get(key string) (ValueModel, error)
-	Put(key string, value string, ddl int64) error
-	Delete(key string) error
-	List(keyPrefix string, limit int64) (map[string]ValueModel, error)
+	GetKV(namespace string, key string) (ValueModel, error)
+	PutKV(namespace string, key string, value string, ddl int64) error
+	DeleteKV(namespace string, key string) error
+	ListKV(namespace string, keyPrefix string, limit int64) (map[string]ValueModel, error)
 }

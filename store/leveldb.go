@@ -1,48 +1,57 @@
 package store
 
 import (
+	"fmt"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"gopkg.in/yaml.v3"
+	"sync"
 	"time"
 )
 
 type levelDB struct {
 	DB
-	db *leveldb.DB
+	path  string
+	dbMap map[string]*leveldb.DB
 }
 
 func newLevelDB(path string) (DB, error) {
-	db, err := leveldb.OpenFile(path, nil)
-	if err != nil {
-		return nil, err
-	}
 	s := &levelDB{
-		db: db,
+		path:  path,
+		dbMap: make(map[string]*leveldb.DB, 100),
 	}
 	go backgroundCleanTask(s)
 	return s, nil
 }
 
-func (s *levelDB) Get(key string) (ValueModel, error) {
+func (s *levelDB) GetKV(namespace string, key string) (ValueModel, error) {
 	vm := ValueModel{}
-	value, err := s.db.Get([]byte(key), nil)
+	err := autoCreateNamespace(s, namespace)
+	if err != nil {
+		return vm, errors.New("namespace create error")
+	}
+	value, err := s.dbMap[namespace].Get([]byte(key), nil)
 	if err != nil {
 		return vm, err
 	}
 	err = yaml.Unmarshal(value, &vm)
 	if err != nil {
-		backgroundDelKey(s, key)
+		backgroundDelKey(s.dbMap[namespace], key)
 		return vm, err
 	}
 	if vm.DDL > 0 && time.Now().Unix() > vm.DDL {
-		backgroundDelKey(s, key)
+		backgroundDelKey(s.dbMap[namespace], key)
 		return vm, nil
 	}
 	return vm, nil
 }
 
-func (s *levelDB) Put(key string, value string, ddl int64) error {
+func (s *levelDB) PutKV(namespace string, key string, value string, ddl int64) error {
+	err := autoCreateNamespace(s, namespace)
+	if err != nil {
+		return errors.New("namespace create error")
+	}
 	vm := ValueModel{
 		Value: value,
 		DDL:   ddl,
@@ -51,14 +60,22 @@ func (s *levelDB) Put(key string, value string, ddl int64) error {
 	if err != nil {
 		return err
 	}
-	return s.db.Put([]byte(key), marshal, nil)
+	return s.dbMap[namespace].Put([]byte(key), marshal, nil)
 }
 
-func (s *levelDB) Delete(key string) error {
-	return s.db.Delete([]byte(key), nil)
+func (s *levelDB) DeleteKV(namespace string, key string) error {
+	err := autoCreateNamespace(s, namespace)
+	if err != nil {
+		return errors.New("namespace create error")
+	}
+	return s.dbMap[namespace].Delete([]byte(key), nil)
 }
 
-func (s *levelDB) List(keyPrefix string, limit int64) (map[string]ValueModel, error) {
+func (s *levelDB) ListKV(namespace string, keyPrefix string, limit int64) (map[string]ValueModel, error) {
+	err := autoCreateNamespace(s, namespace)
+	if err != nil {
+		return nil, errors.New("namespace create error")
+	}
 	var deleteKeys []string
 	var i int64 = 0
 	var mapInitLimit int64 = 100
@@ -70,7 +87,7 @@ func (s *levelDB) List(keyPrefix string, limit int64) (map[string]ValueModel, er
 	if len(keyPrefix) > 0 {
 		bytesPrefix = util.BytesPrefix([]byte(keyPrefix))
 	}
-	iter := s.db.NewIterator(bytesPrefix, nil)
+	iter := s.dbMap[namespace].NewIterator(bytesPrefix, nil)
 	for iter.Next() {
 		i = i + 1
 		if i > limit && limit > 0 {
@@ -91,25 +108,27 @@ func (s *levelDB) List(keyPrefix string, limit int64) (map[string]ValueModel, er
 	}
 	iter.Release()
 	for _, k := range deleteKeys {
-		backgroundDelKey(s, k)
+		backgroundDelKey(s.dbMap[namespace], k)
 	}
 	return kvs, nil
 }
 
-func backgroundDelKey(s *levelDB, key string) {
-	_ = s.db.Delete([]byte(key), nil)
+func backgroundDelKey(db *leveldb.DB, key string) {
+	_ = db.Delete([]byte(key), nil)
 }
 
 func backgroundCleanTask(s *levelDB) {
 	for {
 		time.Sleep(1 * time.Minute)
-		backgroundClean(s)
+		for _, db := range s.dbMap {
+			backgroundClean(db)
+		}
 	}
 }
 
-func backgroundClean(s *levelDB) {
+func backgroundClean(db *leveldb.DB) {
 	var deleteKeys []string
-	iter := s.db.NewIterator(nil, nil)
+	iter := db.NewIterator(nil, nil)
 	for iter.Next() {
 		vm := ValueModel{}
 		key := string(iter.Key())
@@ -125,6 +144,23 @@ func backgroundClean(s *levelDB) {
 	}
 	iter.Release()
 	for _, k := range deleteKeys {
-		backgroundDelKey(s, k)
+		backgroundDelKey(db, k)
 	}
+}
+
+var namespaceLock sync.Mutex
+
+func autoCreateNamespace(s *levelDB, namespace string) error {
+	if s.dbMap[namespace] == nil {
+		db, err := leveldb.OpenFile(fmt.Sprintf("%s/%s", s.path, namespace), nil)
+		if err != nil {
+			return err
+		}
+		if s.dbMap[namespace] == nil {
+			namespaceLock.Lock()
+			s.dbMap[namespace] = db
+			namespaceLock.Unlock()
+		}
+	}
+	return nil
 }

@@ -5,7 +5,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/hashicorp/raft"
 	"log"
-	"sync"
 )
 
 var Channel chan []byte
@@ -20,8 +19,8 @@ var config ConfigModel
 type ConnInfo struct {
 	ConnId    string
 	Conn      *websocket.Conn
+	Namespace string
 	KeyPrefix string
 }
 
-var ConnLock sync.Mutex
 var ConnMap = make(map[string]ConnInfo, 1000)
