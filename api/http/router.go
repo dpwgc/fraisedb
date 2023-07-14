@@ -24,7 +24,7 @@ func InitRouter() {
 	r.GET("/kvs/:keyPrefix", listKV)
 	r.GET("/subscribe/:keyPrefix", subscribe)
 
-	initEventConsumer()
+	initConsumer()
 	err := http.ListenAndServe(port, r)
 	if err != nil {
 		base.LogHandler.Println(base.LogErrorTag, err)

@@ -8,22 +8,12 @@ import (
 	"gopkg.in/yaml.v3"
 	"net/http"
 	"strings"
-	"sync"
 )
 
 var upGrader = websocket.Upgrader{
 	ReadBufferSize:  8192,
 	WriteBufferSize: 8192,
 }
-
-type connInfo struct {
-	ConnId    string
-	Conn      *websocket.Conn
-	KeyPrefix string
-}
-
-var connLock sync.Mutex
-var connMap = make(map[string]connInfo, 1000)
 
 func subscribe(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 
@@ -38,7 +28,7 @@ func subscribe(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		return
 	}
 
-	ci := connInfo{
+	ci := base.ConnInfo{
 		ConnId:    connId,
 		Conn:      conn,
 		KeyPrefix: keyPrefix,
@@ -47,20 +37,20 @@ func subscribe(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	go listener(ci)
 }
 
-func listener(ci connInfo) {
+func listener(ci base.ConnInfo) {
 
-	connLock.Lock()
-	connMap[ci.ConnId] = ci
-	connLock.Unlock()
+	base.ConnLock.Lock()
+	base.ConnMap[ci.ConnId] = ci
+	base.ConnLock.Unlock()
 
 	defer func() {
 		err := ci.Conn.Close()
 		if err != nil {
 			base.LogHandler.Println(base.LogErrorTag, err)
 		}
-		connLock.Lock()
-		delete(connMap, ci.ConnId)
-		connLock.Unlock()
+		base.ConnLock.Lock()
+		delete(base.ConnMap, ci.ConnId)
+		base.ConnLock.Unlock()
 	}()
 	for {
 		// 接收数据
@@ -78,7 +68,7 @@ func listener(ci connInfo) {
 	}
 }
 
-func initEventConsumer() {
+func initConsumer() {
 	go func() {
 		for {
 			msg := <-base.Channel
@@ -94,12 +84,12 @@ func broadcast(msg []byte) {
 		base.LogHandler.Println(base.LogErrorTag, err)
 		return
 	}
-	for _, ci := range connMap {
+	for _, ci := range base.ConnMap {
 		go push(ci, al)
 	}
 }
 
-func push(ci connInfo, al cluster.ApplyLogModel) {
+func push(ci base.ConnInfo, al cluster.ApplyLogModel) {
 	err := error(nil)
 	defer func() {
 		if err != nil {
@@ -107,9 +97,9 @@ func push(ci connInfo, al cluster.ApplyLogModel) {
 			if err != nil {
 				base.LogHandler.Println(base.LogErrorTag, err)
 			}
-			connLock.Lock()
-			delete(connMap, ci.ConnId)
-			connLock.Unlock()
+			base.ConnLock.Lock()
+			delete(base.ConnMap, ci.ConnId)
+			base.ConnLock.Unlock()
 		}
 	}()
 	if len(ci.KeyPrefix) == 0 {
