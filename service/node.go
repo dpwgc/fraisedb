@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"fraisedb/base"
 	"fraisedb/cluster"
+	"fraisedb/store"
 	"github.com/syndtr/goleveldb/leveldb/errors"
 )
 
@@ -15,12 +16,16 @@ func StartNode() {
 		panic(err)
 	}
 	base.Channel = make(chan []byte, 1000)
-	base.Node, base.NodeDB, err = cluster.StartNode(base.Config().Node.First,
+	base.NodeDB, err = store.NewDB(fmt.Sprintf("%s/kv", base.Config().Store.Data))
+	if err != nil {
+		base.LogHandler.Println(base.LogErrorTag, err)
+		panic(err)
+	}
+	base.Node, err = cluster.StartNode(base.Config().Node.First,
 		fmt.Sprintf("%s:%v", base.Config().Node.Addr, base.Config().Node.TcpPort),
 		fmt.Sprintf("%s/log", base.Config().Store.Data),
 		fmt.Sprintf("%s/stable", base.Config().Store.Data),
-		fmt.Sprintf("%s/snapshot", base.Config().Store.Data),
-		fmt.Sprintf("%s/kv", base.Config().Store.Data))
+		fmt.Sprintf("%s/snapshot", base.Config().Store.Data))
 	if err != nil {
 		base.LogHandler.Println(base.LogErrorTag, err)
 		panic(err)

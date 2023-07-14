@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"fraisedb/base"
-	"fraisedb/store"
 	"github.com/hashicorp/raft"
 	"gopkg.in/yaml.v3"
 	"io"
@@ -17,15 +16,11 @@ type StorageFSM struct {
 	l  *sync.Mutex
 }
 
-func newFsm(id string, path string) (raft.FSM, store.DB, error) {
-	db, err := store.NewDB(path)
-	if err != nil {
-		return nil, nil, err
-	}
+func newFsm(id string) (raft.FSM, error) {
 	return &StorageFSM{
 		id,
 		&mutex,
-	}, db, nil
+	}, nil
 }
 
 func (c *StorageFSM) Apply(log *raft.Log) interface{} {

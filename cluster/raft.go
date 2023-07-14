@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"fraisedb/base"
-	"fraisedb/store"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
 	raftBoltDB "github.com/hashicorp/raft-boltdb"
@@ -12,7 +11,7 @@ import (
 	"time"
 )
 
-func StartNode(first bool, localAddr string, logStorePath string, stableStorePath string, snapshotStorePath string, kvStorePath string) (*raft.Raft, store.DB, error) {
+func StartNode(first bool, localAddr string, logStorePath string, stableStorePath string, snapshotStorePath string) (*raft.Raft, error) {
 
 	raftConfig := raft.DefaultConfig()
 	raftConfig.LocalID = raft.ServerID(localAddr)
@@ -20,37 +19,37 @@ func StartNode(first bool, localAddr string, logStorePath string, stableStorePat
 
 	logStore, err := raftBoltDB.NewBoltStore(logStorePath)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	stableStore, err := raftBoltDB.NewBoltStore(stableStorePath)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	snapshotStore, err := raft.NewFileSnapshotStore(snapshotStorePath, 1, os.Stderr)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	localAddress, err := net.ResolveTCPAddr("tcp", localAddr)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	transport, err := raft.NewTCPTransport(localAddr, localAddress, 3, base.ConnectTimeout*time.Second, os.Stderr)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	fsm, db, err := newFsm(localAddr, kvStorePath)
+	fsm, err := newFsm(localAddr)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	r, err := raft.NewRaft(raftConfig, fsm, logStore, stableStore, snapshotStore, transport)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if first {
@@ -63,7 +62,7 @@ func StartNode(first bool, localAddr string, logStorePath string, stableStorePat
 			},
 		})
 	}
-	return r, db, nil
+	return r, nil
 }
 
 func AddNode(leader *raft.Raft, nodeAddr string) error {
