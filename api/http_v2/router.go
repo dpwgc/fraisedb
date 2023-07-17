@@ -1,4 +1,4 @@
-package http
+package http_v2
 
 import (
 	"fmt"
@@ -17,19 +17,23 @@ func InitRouter() {
 
 	r := httprouter.New()
 
-	r.POST("/node", addNode)
-	r.GET("/leader", getLeader)
+	r.GET("/v2/health", health)
 
-	r.POST("/namespace/:namespace", createNamespace)
-	r.GET("/namespaces", listNamespace)
-	r.DELETE("/namespace/:namespace", deleteNamespace)
+	r.POST("/v2/node", addNode)
+	r.DELETE("/v2/node/:endpoint", removeNode)
+	r.GET("/v2/nodes", listNode)
+	r.GET("/v2/leader", getLeader)
 
-	r.PUT("/kv/:namespace/:key", putKV)
-	r.GET("/kv/:namespace/:key", getKV)
-	r.DELETE("/kv/:namespace/:key", deleteKV)
-	r.GET("/kvs/:namespace/:keyPrefix", listKV)
+	r.POST("/v2/namespace/:namespace", createNamespace)
+	r.GET("/v2/namespaces", listNamespace)
+	r.DELETE("/v2/namespace/:namespace", deleteNamespace)
 
-	r.GET("/subscribe/:namespace/:keyPrefix", subscribe)
+	r.PUT("/v2/kv/:namespace/:key", putKV)
+	r.GET("/v2/kv/:namespace/:key", getKV)
+	r.DELETE("/v2/kv/:namespace/:key", deleteKV)
+	r.GET("/v2/kvs/:namespace/:keyPrefix", listKV)
+
+	r.GET("/v2/subscribe/:namespace/:keyPrefix", subscribe)
 
 	initConsumer()
 	err := http.ListenAndServe(port, r)
@@ -39,13 +43,30 @@ func InitRouter() {
 	}
 }
 
+func health(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	_, err := w.Write([]byte("1"))
+	if err != nil {
+		base.LogHandler.Println(base.LogErrorTag, err)
+	}
+}
+
 func addNode(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	command, err := readNodeCommand(r)
 	if err != nil {
 		result(w, false, nil, err.Error())
 		return
 	}
-	err = service.AddNode(command.Addr, command.Port)
+	err = service.AddNode(command.Addr, command.TcpPort, command.HttpPort)
+	if err != nil {
+		result(w, false, nil, err.Error())
+		return
+	}
+	result(w, true, fmt.Sprintf("%s:%v", command.Addr, command.HttpPort), "")
+}
+
+func removeNode(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	address := p.ByName("endpoint")
+	err := service.RemoveNode(address)
 	if err != nil {
 		result(w, false, nil, err.Error())
 		return
@@ -56,6 +77,11 @@ func addNode(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 func getLeader(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	leader := service.GetLeader()
 	result(w, true, leader, "")
+}
+
+func listNode(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	ns := service.ListNode()
+	result(w, true, ns, "")
 }
 
 func listNamespace(w http.ResponseWriter, r *http.Request, p httprouter.Params) {

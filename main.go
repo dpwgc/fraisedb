@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fraisedb/api/http"
+	"fraisedb/api/http_v2"
 	"fraisedb/base"
 	"fraisedb/service"
 )
@@ -10,5 +10,5 @@ func main() {
 	base.InitConfig()
 	base.InitLog()
 	service.StartNode()
-	http.InitRouter()
+	http_v2.InitRouter()
 }

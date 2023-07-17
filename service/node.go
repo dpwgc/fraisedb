@@ -29,6 +29,7 @@ func StartNode() {
 	}
 	base.Node, err = cluster.StartNode(base.Config().Node.First,
 		fmt.Sprintf("%s:%v", base.Config().Node.Addr, base.Config().Node.TcpPort),
+		fmt.Sprintf("%s:%v", base.Config().Node.Addr, base.Config().Node.HttpPort),
 		fmt.Sprintf("%s/log", base.Config().Store.Data),
 		fmt.Sprintf("%s/stable", base.Config().Store.Data),
 		fmt.Sprintf("%s/snapshot", base.Config().Store.Data))
@@ -39,16 +40,27 @@ func StartNode() {
 }
 
 // AddNode 在领导者节点上添加新的节点
-func AddNode(addr string, port int) error {
+func AddNode(addr string, tcpPort int, httpPort int) error {
 	if len(addr) == 0 {
 		return errors.New("len(addr) == 0")
 	}
-	if port <= 0 {
-		return errors.New("port <= 0")
+	if tcpPort <= 0 {
+		return errors.New("tcpPort <= 0")
 	}
-	return cluster.AddNode(base.Node, fmt.Sprintf("%s:%v", addr, port))
+	if httpPort <= 0 {
+		return errors.New("httpPort <= 0")
+	}
+	return cluster.AddNode(base.Node, fmt.Sprintf("%s:%v", addr, tcpPort), fmt.Sprintf("%s:%v", addr, httpPort))
+}
+
+func RemoveNode(httpHost string) error {
+	return cluster.RemoveNode(base.Node, httpHost)
 }
 
 func GetLeader() string {
 	return cluster.GetLeader(base.Node)
+}
+
+func ListNode() []cluster.NodeInfoModel {
+	return cluster.ListNode(base.Node)
 }

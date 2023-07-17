@@ -1,4 +1,4 @@
-package http
+package http_v2
 
 import (
 	"encoding/json"
@@ -14,8 +14,9 @@ type resultDTO struct {
 }
 
 type nodeCommand struct {
-	Addr string `json:"addr"`
-	Port int    `json:"port"`
+	Addr     string `json:"addr"`
+	TcpPort  int    `json:"tcpPort"`
+	HttpPort int    `json:"httpPort"`
 }
 
 type kvCommand struct {

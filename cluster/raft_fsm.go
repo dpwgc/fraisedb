@@ -58,7 +58,7 @@ func (c *StorageFSM) Apply(log *raft.Log) interface{} {
 	if err != nil {
 		base.LogHandler.Println(base.LogErrorTag, err)
 	}
-	if time.Now().Unix()-base.ConnectTimeout <= log.AppendedAt.Unix() && al.Method < 2 {
+	if time.Now().Unix()-base.ConnectTimeout30 <= log.AppendedAt.Unix() && al.Method < 2 {
 		base.Channel <- log.Data
 	}
 	return nil

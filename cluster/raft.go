@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"fmt"
 	"fraisedb/base"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
@@ -8,13 +9,14 @@ import (
 	"gopkg.in/yaml.v3"
 	"net"
 	"os"
+	"sync"
 	"time"
 )
 
-func StartNode(first bool, localAddr string, logStorePath string, stableStorePath string, snapshotStorePath string) (*raft.Raft, error) {
+func StartNode(first bool, tcpHost string, httpHost string, logStorePath string, stableStorePath string, snapshotStorePath string) (*raft.Raft, error) {
 
 	raftConfig := raft.DefaultConfig()
-	raftConfig.LocalID = raft.ServerID(localAddr)
+	raftConfig.LocalID = raft.ServerID(httpHost)
 	raftConfig.Logger = hclog.Default()
 
 	logStore, err := raftBoltDB.NewBoltStore(logStorePath)
@@ -32,17 +34,17 @@ func StartNode(first bool, localAddr string, logStorePath string, stableStorePat
 		return nil, err
 	}
 
-	localAddress, err := net.ResolveTCPAddr("tcp", localAddr)
+	localAddress, err := net.ResolveTCPAddr("tcp", tcpHost)
 	if err != nil {
 		return nil, err
 	}
 
-	transport, err := raft.NewTCPTransport(localAddr, localAddress, 3, base.ConnectTimeout*time.Second, os.Stderr)
+	transport, err := raft.NewTCPTransport(tcpHost, localAddress, 3, base.ConnectTimeout3*time.Second, os.Stderr)
 	if err != nil {
 		return nil, err
 	}
 
-	fsm, err := newFsm(localAddr)
+	fsm, err := newFsm(httpHost)
 	if err != nil {
 		return nil, err
 	}
@@ -65,14 +67,57 @@ func StartNode(first bool, localAddr string, logStorePath string, stableStorePat
 	return r, nil
 }
 
-func AddNode(leader *raft.Raft, nodeAddr string) error {
-	f := leader.AddVoter(raft.ServerID(nodeAddr), raft.ServerAddress(nodeAddr), 0, base.ConnectTimeout*time.Second)
+func AddNode(leader *raft.Raft, tcpHost string, httpHost string) error {
+	f := leader.AddVoter(raft.ServerID(httpHost), raft.ServerAddress(tcpHost), 0, base.ConnectTimeout3*time.Second)
+	return f.Error()
+}
+
+func RemoveNode(leader *raft.Raft, httpHost string) error {
+	f := leader.RemoveServer(raft.ServerID(httpHost), 0, base.ConnectTimeout3*time.Second)
 	return f.Error()
 }
 
 func GetLeader(node *raft.Raft) string {
-	addr, _ := node.LeaderWithID()
-	return string(addr)
+	_, id := node.LeaderWithID()
+	return string(id)
+}
+
+type NodeInfoModel struct {
+	Endpoint string `json:"endpoint"`
+	Health   bool   `json:"health"`
+	Leader   bool   `json:"leader"`
+}
+
+func ListNode(node *raft.Raft) []NodeInfoModel {
+	if len(node.GetConfiguration().Configuration().Servers) == 0 {
+		return nil
+	}
+	leaderID := GetLeader(node)
+	var ns []NodeInfoModel
+	var wg sync.WaitGroup
+	wg.Add(len(node.GetConfiguration().Configuration().Servers))
+	for _, v := range node.GetConfiguration().Configuration().Servers {
+		go func(v raft.Server) {
+			endpoint := string(v.ID)
+			health := false
+			leader := false
+			res, err := base.HttpGet(fmt.Sprintf("http://%s/v2/health", endpoint))
+			if err == nil && res != nil && string(res) == "1" {
+				health = true
+			}
+			if endpoint == leaderID {
+				leader = true
+			}
+			ns = append(ns, NodeInfoModel{
+				Endpoint: endpoint,
+				Health:   health,
+				Leader:   leader,
+			})
+			wg.Done()
+		}(v)
+	}
+	wg.Wait()
+	return ns
 }
 
 type ApplyLogModel struct {
@@ -98,6 +143,6 @@ func ApplyLog(node *raft.Raft, namespace string, method int, key string, value s
 	}
 	node.ApplyLog(raft.Log{
 		Data: marshal,
-	}, base.ConnectTimeout*time.Second)
+	}, base.ConnectTimeout30*time.Second)
 	return nil
 }
