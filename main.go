@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fraisedb/api/http_v2"
+	"fraisedb/api/http/v2"
 	"fraisedb/base"
 	"fraisedb/service"
 )

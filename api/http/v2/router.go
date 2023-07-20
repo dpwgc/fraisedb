@@ -56,12 +56,22 @@ func addNode(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		result(w, false, nil, err.Error())
 		return
 	}
+	endpoint := fmt.Sprintf("%s:%v", command.Addr, command.HttpPort)
+	res, err := base.HttpGet(fmt.Sprintf("http://%s/v2/health", endpoint))
+	if err != nil {
+		result(w, false, nil, err.Error())
+		return
+	}
+	if res == nil || string(res) != "1" {
+		result(w, false, nil, "the node is unhealthy")
+		return
+	}
 	err = service.AddNode(command.Addr, command.TcpPort, command.HttpPort)
 	if err != nil {
 		result(w, false, nil, err.Error())
 		return
 	}
-	result(w, true, fmt.Sprintf("%s:%v", command.Addr, command.HttpPort), "")
+	result(w, true, endpoint, "")
 }
 
 func removeNode(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
