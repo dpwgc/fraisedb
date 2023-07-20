@@ -13,15 +13,10 @@ import (
 var mutex sync.Mutex
 
 type StorageFSM struct {
-	Id string
-	l  *sync.Mutex
 }
 
-func newFsm(id string) (raft.FSM, error) {
-	return &StorageFSM{
-		id,
-		&mutex,
-	}, nil
+func newFsm() (raft.FSM, error) {
+	return &StorageFSM{}, nil
 }
 
 func (c *StorageFSM) Apply(log *raft.Log) interface{} {
@@ -65,9 +60,25 @@ func (c *StorageFSM) Apply(log *raft.Log) interface{} {
 }
 
 func (c *StorageFSM) Snapshot() (raft.FSMSnapshot, error) {
-	return nil, nil
+	return newSnapshot(), nil
 }
 
 func (c *StorageFSM) Restore(rc io.ReadCloser) error {
+	var kvSnaps []KVSnapshotModel
+	if err := yaml.NewDecoder(rc).Decode(&kvSnaps); err != nil {
+		return err
+	}
+	mutex.Lock()
+	for _, kvSnap := range kvSnaps {
+		err := base.NodeDB.CreateNamespace(kvSnap.Namespace)
+		if err != nil {
+			return err
+		}
+		err = base.NodeDB.PutKV(kvSnap.Namespace, kvSnap.Key, kvSnap.Value, kvSnap.DDL)
+		if err != nil {
+			return err
+		}
+	}
+	defer mutex.Unlock()
 	return nil
 }

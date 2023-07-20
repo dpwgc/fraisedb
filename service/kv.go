@@ -45,6 +45,9 @@ func PutKV(namespace string, key string, value string, ddl int64) error {
 	if len(value) == 0 {
 		return errors.New("len(value) == 0")
 	}
+	if base.NodeDB.NamespaceNotExist(namespace) {
+		return errors.New("namespace not exist")
+	}
 	return cluster.ApplyLog(base.Node, namespace, 1, key, value, ddl)
 }
 

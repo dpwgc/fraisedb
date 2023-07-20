@@ -36,6 +36,10 @@ func (s *levelDB) ListNamespace() []string {
 	return ns
 }
 
+func (s *levelDB) NamespaceNotExist(namespace string) bool {
+	return s.dbMap[namespace] == nil
+}
+
 func (s *levelDB) CreateNamespace(namespace string) error {
 	if s.dbMap[namespace] == nil {
 		namespaceLock.Lock()
@@ -86,7 +90,7 @@ func (s *levelDB) GetKV(namespace string, key string) (ValueModel, error) {
 
 func (s *levelDB) PutKV(namespace string, key string, value string, ddl int64) error {
 	if s.dbMap[namespace] == nil {
-		return errors.New("namespace does not exist")
+		return errors.New("namespace not exist")
 	}
 	vm := ValueModel{
 		Value: value,
@@ -101,7 +105,7 @@ func (s *levelDB) PutKV(namespace string, key string, value string, ddl int64) e
 
 func (s *levelDB) DeleteKV(namespace string, key string) error {
 	if s.dbMap[namespace] == nil {
-		return errors.New("namespace does not exist")
+		return errors.New("namespace not exist")
 	}
 	return s.dbMap[namespace].Delete([]byte(key), nil)
 }

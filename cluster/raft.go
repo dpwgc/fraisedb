@@ -44,7 +44,7 @@ func StartNode(first bool, tcpHost string, httpHost string, logStorePath string,
 		return nil, err
 	}
 
-	fsm, err := newFsm(httpHost)
+	fsm, err := newFsm()
 	if err != nil {
 		return nil, err
 	}

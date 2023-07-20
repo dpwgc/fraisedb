@@ -11,6 +11,7 @@ type ValueModel struct {
 
 type DB interface {
 	ListNamespace() []string
+	NamespaceNotExist(namespace string) bool
 	CreateNamespace(namespace string) error
 	DeleteNamespace(namespace string) error
 	GetKV(namespace string, key string) (ValueModel, error)
