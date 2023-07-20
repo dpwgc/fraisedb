@@ -19,7 +19,13 @@ var upGrader = websocket.Upgrader{
 func subscribe(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 
 	namespace := p.ByName("namespace")
+	if len(namespace) == 0 {
+		result(w, false, nil, "len(namespace) == 0")
+		return
+	}
+
 	keyPrefix := p.ByName("keyPrefix")
+
 	connId := base.ID()
 
 	upGrader.CheckOrigin = func(r *http.Request) bool { return true }
@@ -94,6 +100,14 @@ func broadcast(msg []byte) {
 	}
 }
 
+type KeyUpdateModel struct {
+	// 0-删除key、1-新建key
+	Method int    `json:"method"`
+	Key    string `json:"key"`
+	Value  string `json:"value"`
+	DDL    int64  `json:"ddl"`
+}
+
 func push(ci base.ConnInfo, al cluster.ApplyLogModel) {
 	err := error(nil)
 	defer func() {
@@ -108,16 +122,22 @@ func push(ci base.ConnInfo, al cluster.ApplyLogModel) {
 		}
 	}()
 	if al.Namespace == ci.Namespace {
+		ku := KeyUpdateModel{
+			Method: al.Method,
+			Key:    al.Key,
+			Value:  al.Value,
+			DDL:    al.DDL,
+		}
 		if len(ci.KeyPrefix) == 0 {
 			// 回写请求
-			if err = ci.Conn.WriteJSON(al); err != nil {
+			if err = ci.Conn.WriteJSON(ku); err != nil {
 				base.LogHandler.Println(base.LogErrorTag, err)
 			}
 			return
 		}
 		if strings.HasPrefix(al.Key, ci.KeyPrefix) {
 			// 回写请求
-			if err = ci.Conn.WriteJSON(al); err != nil {
+			if err = ci.Conn.WriteJSON(ku); err != nil {
 				base.LogHandler.Println(base.LogErrorTag, err)
 			}
 		}

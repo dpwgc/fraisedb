@@ -122,11 +122,11 @@ func ListNode(node *raft.Raft) []NodeInfoModel {
 
 type ApplyLogModel struct {
 	// 0-删除key、1-新建key、10-删除namespace、11-新建namespace
-	Method    int    `yaml:"m" json:"method"`
-	Namespace string `yaml:"n" json:"namespace"`
-	Key       string `yaml:"k" json:"key"`
-	Value     string `yaml:"v" json:"value"`
-	DDL       int64  `yaml:"d" json:"ddl"`
+	Method    int    `yaml:"m"`
+	Namespace string `yaml:"n"`
+	Key       string `yaml:"k"`
+	Value     string `yaml:"v"`
+	DDL       int64  `yaml:"d"`
 }
 
 func ApplyLog(node *raft.Raft, namespace string, method int, key string, value string, ddl int64) error {
