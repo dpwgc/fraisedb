@@ -24,10 +24,6 @@ func subscribe(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		return
 	}
 
-	keyPrefix := p.ByName("keyPrefix")
-
-	connId := base.ID()
-
 	upGrader.CheckOrigin = func(r *http.Request) bool { return true }
 
 	conn, err := upGrader.Upgrade(w, r, nil)
@@ -37,10 +33,10 @@ func subscribe(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	}
 
 	ci := base.ConnInfo{
-		ConnId:    connId,
+		ConnId:    p.ByName("clientId"),
 		Conn:      conn,
 		Namespace: namespace,
-		KeyPrefix: keyPrefix,
+		KeyPrefix: p.ByName("keyPrefix"),
 	}
 
 	go listener(ci)

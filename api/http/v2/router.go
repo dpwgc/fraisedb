@@ -35,7 +35,7 @@ func InitRouter() {
 	r.DELETE("/v2/kv/:namespace/:key", deleteKV)
 	r.GET("/v2/kvs/:namespace/:keyPrefix", listKV)
 
-	r.GET("/v2/subscribe/:namespace/:keyPrefix", subscribe)
+	r.GET("/v2/subscribe/:namespace/:keyPrefix/:clientId", subscribe)
 
 	initConsumer()
 	err := http.ListenAndServe(port, r)
