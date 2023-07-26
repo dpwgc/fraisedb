@@ -53,8 +53,11 @@ func AddNode(addr string, tcpPort int, httpPort int) error {
 	return cluster.AddNode(base.Node, fmt.Sprintf("%s:%v", addr, tcpPort), fmt.Sprintf("%s:%v", addr, httpPort))
 }
 
-func RemoveNode(httpHost string) error {
-	return cluster.RemoveNode(base.Node, httpHost)
+func RemoveNode(endpoint string) error {
+	if len(endpoint) == 0 {
+		return errors.New("len(endpoint) == 0")
+	}
+	return cluster.RemoveNode(base.Node, endpoint)
 }
 
 func GetLeader() string {

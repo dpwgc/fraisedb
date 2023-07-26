@@ -72,8 +72,8 @@ func AddNode(leader *raft.Raft, tcpHost string, httpHost string) error {
 	return f.Error()
 }
 
-func RemoveNode(leader *raft.Raft, httpHost string) error {
-	f := leader.RemoveServer(raft.ServerID(httpHost), 0, base.ConnectTimeout3*time.Second)
+func RemoveNode(leader *raft.Raft, endpoint string) error {
+	f := leader.RemoveServer(raft.ServerID(endpoint), 0, base.ConnectTimeout3*time.Second)
 	return f.Error()
 }
 

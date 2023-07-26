@@ -5,6 +5,8 @@ import (
 	"github.com/google/uuid"
 	"io"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -39,4 +41,18 @@ func HttpGet(url string) ([]byte, error) {
 		return nil, err
 	}
 	return bytes, nil
+}
+
+func HttpForward(writer http.ResponseWriter, request *http.Request, forwardUrl string) error {
+	u, err := url.Parse(forwardUrl)
+	if nil != err {
+		return err
+	}
+	proxy := httputil.ReverseProxy{
+		Director: func(request *http.Request) {
+			request.URL = u
+		},
+	}
+	proxy.ServeHTTP(writer, request)
+	return nil
 }
