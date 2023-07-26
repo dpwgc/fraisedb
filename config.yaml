@@ -1,8 +1,16 @@
+# 节点配置
 node:
+  # 是否是集群中第一个启动的节点
   first: true
+  # 节点的外部访问IP地址
   addr: 127.0.0.1
+  # 节点的TCP端口（用于Raft集群内部调度）
   tcpPort: 7999
+  # 节点的HTTP端口（用于对外数据交互）
   httpPort: 8000
+# 存储配置
 store:
+  # 数据存储目录
   data: ./data
+  # 日志存储目录
   log: ./log
