@@ -6,20 +6,20 @@ import (
 )
 
 type ConfigModel struct {
-	Node  NodeConfig  `yaml:"node"`
-	Store StoreConfig `yaml:"store"`
+	Node  NodeConfig  `yaml:"node" json:"node"`
+	Store StoreConfig `yaml:"store" json:"store"`
 }
 
 type NodeConfig struct {
-	First    bool   `yaml:"first"`
-	Addr     string `yaml:"addr"`
-	TcpPort  int    `yaml:"tcpPort"`
-	HttpPort int    `yaml:"httpPort"`
+	First    bool   `yaml:"first" json:"first"`
+	Addr     string `yaml:"addr" json:"addr"`
+	TcpPort  int    `yaml:"tcpPort" json:"tcpPort"`
+	HttpPort int    `yaml:"httpPort" json:"httpPort"`
 }
 
 type StoreConfig struct {
-	Data string `yaml:"data"`
-	Log  string `yaml:"log"`
+	Data string `yaml:"data" json:"data"`
+	Log  string `yaml:"log" json:"log"`
 }
 
 // InitConfig 加载配置

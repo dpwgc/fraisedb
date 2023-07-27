@@ -74,16 +74,14 @@ func (s *levelDB) GetKV(namespace string, key string) (ValueModel, error) {
 	vm := ValueModel{}
 	value, err := s.dbMap[namespace].Get([]byte(key), nil)
 	if err != nil {
-		return vm, err
+		return ValueModel{}, err
 	}
 	err = yaml.Unmarshal(value, &vm)
 	if err != nil {
-		backgroundDelKey(s.dbMap[namespace], key)
-		return vm, err
+		return ValueModel{}, err
 	}
 	if vm.DDL > 0 && time.Now().Unix() > vm.DDL {
-		backgroundDelKey(s.dbMap[namespace], key)
-		return vm, nil
+		return ValueModel{}, nil
 	}
 	return vm, nil
 }
@@ -111,7 +109,6 @@ func (s *levelDB) DeleteKV(namespace string, key string) error {
 }
 
 func (s *levelDB) ListKV(namespace string, keyPrefix string, limit int64) (map[string]ValueModel, error) {
-	var deleteKeys []string
 	var i int64 = 0
 	var mapInitLimit int64 = 100
 	if limit > 0 {
@@ -124,32 +121,29 @@ func (s *levelDB) ListKV(namespace string, keyPrefix string, limit int64) (map[s
 	}
 	iter := s.dbMap[namespace].NewIterator(bytesPrefix, nil)
 	for iter.Next() {
-		i = i + 1
-		if i > limit && limit > 0 {
-			break
-		}
 		vm := ValueModel{}
 		key := string(iter.Key())
 		err := yaml.Unmarshal(iter.Value(), &vm)
 		if err != nil {
-			deleteKeys = append(deleteKeys, key)
 			continue
 		}
 		if vm.DDL > 0 && time.Now().Unix() > vm.DDL {
-			deleteKeys = append(deleteKeys, key)
 			continue
+		}
+		i = i + 1
+		if i > limit && limit > 0 {
+			break
 		}
 		kvs[key] = vm
 	}
 	iter.Release()
-	for _, k := range deleteKeys {
-		backgroundDelKey(s.dbMap[namespace], k)
-	}
 	return kvs, nil
 }
 
 func backgroundDelKey(db *leveldb.DB, key string) {
-	_ = db.Delete([]byte(key), nil)
+	if db != nil {
+		_ = db.Delete([]byte(key), nil)
+	}
 }
 
 func backgroundCleanTask(s *levelDB) {
