@@ -122,10 +122,6 @@ func (s *levelDB) ListKV(namespace string, keyPrefix string, offset int64, count
 	}
 	iter := s.dbMap[namespace].NewIterator(bytesPrefix, nil)
 	for iter.Next() {
-		if o < offset {
-			o = o + 1
-			continue
-		}
 		vm := ValueModel{}
 		key := string(iter.Key())
 		err := yaml.Unmarshal(iter.Value(), &vm)
@@ -135,6 +131,12 @@ func (s *levelDB) ListKV(namespace string, keyPrefix string, offset int64, count
 		if vm.DDL > 0 && time.Now().Unix() > vm.DDL {
 			continue
 		}
+		// 到指定游标后再取值
+		if o < offset {
+			o = o + 1
+			continue
+		}
+		// 取值区间长度限制
 		c = c + 1
 		if c > count && count > 0 {
 			break
