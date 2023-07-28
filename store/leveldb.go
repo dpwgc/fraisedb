@@ -78,9 +78,11 @@ func (s *levelDB) GetKV(namespace string, key string) (KvDTO, error) {
 	}
 	err = yaml.Unmarshal(value, &vm)
 	if err != nil {
+		backgroundDelKey(s.dbMap[namespace], key)
 		return KvDTO{}, err
 	}
 	if vm.DDL > 0 && time.Now().Unix() > vm.DDL {
+		backgroundDelKey(s.dbMap[namespace], key)
 		return KvDTO{}, nil
 	}
 	return KvDTO{
@@ -126,9 +128,11 @@ func (s *levelDB) ListKV(namespace string, keyPrefix string, offset int64, count
 		key := string(iter.Key())
 		err := yaml.Unmarshal(iter.Value(), &vm)
 		if err != nil {
+			backgroundDelKey(s.dbMap[namespace], key)
 			continue
 		}
 		if vm.DDL > 0 && time.Now().Unix() > vm.DDL {
+			backgroundDelKey(s.dbMap[namespace], key)
 			continue
 		}
 		// 到指定游标后再取值
@@ -167,23 +171,19 @@ func backgroundCleanTask(s *levelDB) {
 }
 
 func backgroundClean(db *leveldb.DB) {
-	var deleteKeys []string
 	iter := db.NewIterator(nil, nil)
 	for iter.Next() {
 		vm := ValueModel{}
 		key := string(iter.Key())
 		err := yaml.Unmarshal(iter.Value(), &vm)
 		if err != nil {
-			deleteKeys = append(deleteKeys, key)
+			backgroundDelKey(db, key)
 			continue
 		}
 		if vm.DDL > 0 && time.Now().Unix() > vm.DDL {
-			deleteKeys = append(deleteKeys, key)
+			backgroundDelKey(db, key)
 			continue
 		}
 	}
 	iter.Release()
-	for _, k := range deleteKeys {
-		backgroundDelKey(db, k)
-	}
 }
