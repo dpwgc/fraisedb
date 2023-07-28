@@ -27,7 +27,7 @@ func StartNode() {
 		base.LogHandler.Println(base.LogErrorTag, err)
 		panic(err)
 	}
-	base.Node, err = cluster.StartNode(base.Config().Node.First,
+	base.NodeRaft, err = cluster.StartNode(base.Config().Node.First,
 		fmt.Sprintf("%s:%v", base.Config().Node.Addr, base.Config().Node.TcpPort),
 		fmt.Sprintf("%s:%v", base.Config().Node.Addr, base.Config().Node.HttpPort),
 		fmt.Sprintf("%s/log", base.Config().Store.Data),
@@ -50,20 +50,20 @@ func AddNode(addr string, tcpPort int, httpPort int) error {
 	if httpPort <= 0 {
 		return errors.New("httpPort <= 0")
 	}
-	return cluster.AddNode(base.Node, fmt.Sprintf("%s:%v", addr, tcpPort), fmt.Sprintf("%s:%v", addr, httpPort))
+	return cluster.AddNode(base.NodeRaft, fmt.Sprintf("%s:%v", addr, tcpPort), fmt.Sprintf("%s:%v", addr, httpPort))
 }
 
 func RemoveNode(endpoint string) error {
 	if len(endpoint) == 0 {
 		return errors.New("len(endpoint) == 0")
 	}
-	return cluster.RemoveNode(base.Node, endpoint)
+	return cluster.RemoveNode(base.NodeRaft, endpoint)
 }
 
 func GetLeader() string {
-	return cluster.GetLeader(base.Node)
+	return cluster.GetLeader(base.NodeRaft)
 }
 
 func ListNode() []cluster.NodeInfoModel {
-	return cluster.ListNode(base.Node)
+	return cluster.ListNode(base.NodeRaft)
 }

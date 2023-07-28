@@ -15,14 +15,14 @@ func CreateNamespace(namespace string) error {
 	if len(namespace) == 0 {
 		return errors.New("len(namespace) == 0")
 	}
-	return cluster.ApplyLog(base.Node, namespace, 11, "", "", 0)
+	return cluster.ApplyLog(base.NodeRaft, namespace, 11, "", "", 0)
 }
 
 func DeleteNamespace(namespace string) error {
 	if len(namespace) == 0 {
 		return errors.New("len(namespace) == 0")
 	}
-	return cluster.ApplyLog(base.Node, namespace, 10, "", "", 0)
+	return cluster.ApplyLog(base.NodeRaft, namespace, 10, "", "", 0)
 }
 
 func GetKV(namespace string, key string) (store.KvDTO, error) {
@@ -48,7 +48,7 @@ func PutKV(namespace string, key string, value string, ddl int64) error {
 	if base.NodeDB.NamespaceNotExist(namespace) {
 		return errors.New("namespace not exist")
 	}
-	return cluster.ApplyLog(base.Node, namespace, 1, key, value, ddl)
+	return cluster.ApplyLog(base.NodeRaft, namespace, 1, key, value, ddl)
 }
 
 func DeleteKV(namespace string, key string) error {
@@ -58,7 +58,7 @@ func DeleteKV(namespace string, key string) error {
 	if len(key) == 0 {
 		return errors.New("len(key) == 0")
 	}
-	return cluster.ApplyLog(base.Node, namespace, 0, key, "", 0)
+	return cluster.ApplyLog(base.NodeRaft, namespace, 0, key, "", 0)
 }
 
 func ListKV(namespace string, keyPrefix string, offset int64, count int64) ([]store.KvDTO, error) {
