@@ -70,20 +70,24 @@ func (s *levelDB) DeleteNamespace(namespace string) error {
 	return nil
 }
 
-func (s *levelDB) GetKV(namespace string, key string) (ValueModel, error) {
+func (s *levelDB) GetKV(namespace string, key string) (KvDTO, error) {
 	vm := ValueModel{}
 	value, err := s.dbMap[namespace].Get([]byte(key), nil)
 	if err != nil {
-		return ValueModel{}, err
+		return KvDTO{}, err
 	}
 	err = yaml.Unmarshal(value, &vm)
 	if err != nil {
-		return ValueModel{}, err
+		return KvDTO{}, err
 	}
 	if vm.DDL > 0 && time.Now().Unix() > vm.DDL {
-		return ValueModel{}, nil
+		return KvDTO{}, nil
 	}
-	return vm, nil
+	return KvDTO{
+		Key:   key,
+		Value: vm.Value,
+		DDL:   vm.DDL,
+	}, nil
 }
 
 func (s *levelDB) PutKV(namespace string, key string, value string, ddl int64) error {
@@ -108,19 +112,20 @@ func (s *levelDB) DeleteKV(namespace string, key string) error {
 	return s.dbMap[namespace].Delete([]byte(key), nil)
 }
 
-func (s *levelDB) ListKV(namespace string, keyPrefix string, limit int64) (map[string]ValueModel, error) {
-	var i int64 = 0
-	var mapInitLimit int64 = 100
-	if limit > 0 {
-		mapInitLimit = limit
-	}
-	var kvs = make(map[string]ValueModel, mapInitLimit)
+func (s *levelDB) ListKV(namespace string, keyPrefix string, offset int64, count int64) ([]KvDTO, error) {
+	var o int64 = 0
+	var c int64 = 0
+	var kvs []KvDTO
 	var bytesPrefix *util.Range = nil
 	if len(keyPrefix) > 0 {
 		bytesPrefix = util.BytesPrefix([]byte(keyPrefix))
 	}
 	iter := s.dbMap[namespace].NewIterator(bytesPrefix, nil)
 	for iter.Next() {
+		if o < offset {
+			o = o + 1
+			continue
+		}
 		vm := ValueModel{}
 		key := string(iter.Key())
 		err := yaml.Unmarshal(iter.Value(), &vm)
@@ -130,11 +135,15 @@ func (s *levelDB) ListKV(namespace string, keyPrefix string, limit int64) (map[s
 		if vm.DDL > 0 && time.Now().Unix() > vm.DDL {
 			continue
 		}
-		i = i + 1
-		if i > limit && limit > 0 {
+		c = c + 1
+		if c > count && count > 0 {
 			break
 		}
-		kvs[key] = vm
+		kvs = append(kvs, KvDTO{
+			Key:   key,
+			Value: vm.Value,
+			DDL:   vm.DDL,
+		})
 	}
 	iter.Release()
 	return kvs, nil

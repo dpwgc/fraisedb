@@ -7,12 +7,6 @@ import (
 	"net/http"
 )
 
-type resultDTO struct {
-	Ok    bool   `json:"ok"`
-	Data  any    `json:"data"`
-	Error string `json:"error"`
-}
-
 type nodeCommand struct {
 	Addr     string `json:"addr"`
 	TcpPort  int    `json:"tcpPort"`
@@ -24,15 +18,17 @@ type kvCommand struct {
 	TTL   int64  `json:"ttl"`
 }
 
-func result(w http.ResponseWriter, ok bool, data any, errorMsg string) {
-	if len(errorMsg) > 0 {
+func result(w http.ResponseWriter, code int, data any, errorMsg error) {
+	var res = make(map[string]any, 3)
+	res["code"] = code
+	if code != base.SuccessCode {
+		res["error"] = errorMsg.Error()
 		base.LogHandler.Println(base.LogErrorTag, errorMsg)
 	}
-	marshal, _ := json.Marshal(resultDTO{
-		Ok:    ok,
-		Data:  data,
-		Error: errorMsg,
-	})
+	if data != nil {
+		res["data"] = data
+	}
+	marshal, _ := json.Marshal(res)
 	_, err := w.Write(marshal)
 	if err != nil {
 		base.LogHandler.Println(base.LogErrorTag, err)

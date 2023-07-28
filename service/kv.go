@@ -25,12 +25,12 @@ func DeleteNamespace(namespace string) error {
 	return cluster.ApplyLog(base.Node, namespace, 10, "", "", 0)
 }
 
-func GetKV(namespace string, key string) (store.ValueModel, error) {
+func GetKV(namespace string, key string) (store.KvDTO, error) {
 	if len(namespace) == 0 {
-		return store.ValueModel{}, errors.New("len(namespace) == 0")
+		return store.KvDTO{}, errors.New("len(namespace) == 0")
 	}
 	if len(key) == 0 {
-		return store.ValueModel{}, errors.New("len(key) == 0")
+		return store.KvDTO{}, errors.New("len(key) == 0")
 	}
 	return base.NodeDB.GetKV(namespace, key)
 }
@@ -61,9 +61,9 @@ func DeleteKV(namespace string, key string) error {
 	return cluster.ApplyLog(base.Node, namespace, 0, key, "", 0)
 }
 
-func ListKV(namespace string, keyPrefix string, limit int64) (map[string]store.ValueModel, error) {
+func ListKV(namespace string, keyPrefix string, offset int64, count int64) ([]store.KvDTO, error) {
 	if len(namespace) == 0 {
 		return nil, errors.New("len(namespace) == 0")
 	}
-	return base.NodeDB.ListKV(namespace, keyPrefix, limit)
+	return base.NodeDB.ListKV(namespace, keyPrefix, offset, count)
 }

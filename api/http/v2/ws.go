@@ -5,6 +5,7 @@ import (
 	"fraisedb/cluster"
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
+	"github.com/syndtr/goleveldb/leveldb/errors"
 	"gopkg.in/yaml.v3"
 	"net/http"
 	"strings"
@@ -20,7 +21,7 @@ func subscribe(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 
 	namespace := p.ByName("namespace")
 	if len(namespace) == 0 {
-		result(w, false, nil, "len(namespace) == 0")
+		result(w, base.InterfaceLayerErrorCode, nil, errors.New("len(namespace) == 0"))
 		return
 	}
 

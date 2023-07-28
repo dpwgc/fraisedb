@@ -35,14 +35,14 @@ func (s *Snapshot) Persist(sink raft.SnapshotSink) error {
 	var kvSnaps []KVSnapshotModel
 	ns := base.NodeDB.ListNamespace()
 	for _, n := range ns {
-		kvs, err := base.NodeDB.ListKV(n, "", 0)
+		kvs, err := base.NodeDB.ListKV(n, "", 0, 0)
 		if err != nil {
 			return err
 		}
-		for k, kv := range kvs {
+		for _, kv := range kvs {
 			kvSnap := KVSnapshotModel{
 				Namespace: n,
-				Key:       k,
+				Key:       kv.Key,
 				Value:     kv.Value,
 				DDL:       kv.DDL,
 			}
