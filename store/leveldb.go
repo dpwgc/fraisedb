@@ -7,6 +7,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"gopkg.in/yaml.v3"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -92,19 +93,56 @@ func (s *levelDB) GetKV(namespace string, key string) (KvDTO, error) {
 	}, nil
 }
 
-func (s *levelDB) PutKV(namespace string, key string, value string, ddl int64) error {
+func (s *levelDB) PutKV(namespace string, key string, saveType int, value string, incr int64, ddl int64) error {
 	if s.dbMap[namespace] == nil {
 		return errors.New("namespace not exist")
 	}
-	vm := ValueModel{
-		Value: value,
-		DDL:   ddl,
+	// saveType=0：完全覆盖更新
+	// saveType=1：只更新值
+	// saveType=2：在原值基础上累加incr
+	// saveType=3：只重设过期时间
+	if saveType != 0 {
+		// 先查出当前value
+		kv, err := s.GetKV(namespace, key)
+		if err != nil {
+			return err
+		}
+		switch saveType {
+		case 1:
+			kv.Value = value
+			break
+		case 2:
+			number, err := strconv.ParseInt(kv.Value, 10, 64)
+			if err != nil {
+				return err
+			}
+			number = number + incr
+			kv.Value = strconv.FormatInt(number, 10)
+			break
+		case 3:
+			kv.DDL = ddl
+			break
+		default:
+			return errors.New("save type error")
+		}
+		marshal, err := yaml.Marshal(ValueModel{
+			Value: kv.Value,
+			DDL:   kv.DDL,
+		})
+		if err != nil {
+			return err
+		}
+		return s.dbMap[namespace].Put([]byte(key), marshal, nil)
+	} else {
+		marshal, err := yaml.Marshal(ValueModel{
+			Value: value,
+			DDL:   ddl,
+		})
+		if err != nil {
+			return err
+		}
+		return s.dbMap[namespace].Put([]byte(key), marshal, nil)
 	}
-	marshal, err := yaml.Marshal(vm)
-	if err != nil {
-		return err
-	}
-	return s.dbMap[namespace].Put([]byte(key), marshal, nil)
 }
 
 func (s *levelDB) DeleteKV(namespace string, key string) error {

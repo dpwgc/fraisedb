@@ -163,12 +163,12 @@ func putKV(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	if command.TTL > 0 {
 		ddl = time.Now().Unix() + command.TTL
 	}
-	err = service.PutKV(namespace, key, command.Value, ddl)
+	err = service.PutKV(namespace, key, command.SaveType, command.Value, command.Incr, ddl)
 	if err != nil {
 		result(w, base.ServiceLayerErrorCode, nil, err)
 		return
 	}
-	result(w, base.SuccessCode, ddl, nil)
+	result(w, base.SuccessCode, nil, nil)
 }
 
 func getKV(w http.ResponseWriter, r *http.Request, p httprouter.Params) {

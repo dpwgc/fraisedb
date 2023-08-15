@@ -14,8 +14,10 @@ type nodeCommand struct {
 }
 
 type kvCommand struct {
-	Value string `json:"value"`
-	TTL   int64  `json:"ttl"`
+	SaveType int    `json:"type"`
+	Value    string `json:"value"`
+	Incr     int64  `json:"incr"`
+	TTL      int64  `json:"ttl"`
 }
 
 func result(w http.ResponseWriter, code int, data any, errorMsg error) {

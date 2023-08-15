@@ -125,16 +125,20 @@ type ApplyLogModel struct {
 	Method    int    `yaml:"m"`
 	Namespace string `yaml:"n"`
 	Key       string `yaml:"k"`
+	SaveType  int    `yaml:"s"`
 	Value     string `yaml:"v"`
+	Incr      int64  `yaml:"i"`
 	DDL       int64  `yaml:"d"`
 }
 
-func ApplyLog(node *raft.Raft, namespace string, method int, key string, value string, ddl int64) error {
+func ApplyLog(node *raft.Raft, namespace string, method int, key string, saveType int, value string, incr int64, ddl int64) error {
 	log := ApplyLogModel{
 		Method:    method,
 		Namespace: namespace,
 		Key:       key,
+		SaveType:  saveType,
 		Value:     value,
+		Incr:      incr,
 		DDL:       ddl,
 	}
 	marshal, err := yaml.Marshal(log)

@@ -214,21 +214,42 @@ namespace = dev
 key = test
 ```
 Body
+* type=0：直接覆盖更新该键值的全部参数
 ```json
 {
+    "type": 0,
     "value": "hello world",
     "ttl": 300
 }
 ```
-key：键；value：值；ttl：有效时间（秒）（当ttl=0时，键值不会过期）
+* type=1：只更新该键值的value参数
+```json
+{
+    "type": 1,
+    "value": "hello world (new)"
+}
+```
+* type=2：累加该键值的value参数，示例为+100（前提是value必须是个整数字符串，否则报错）
+```json
+{
+    "type": 2,
+    "incr": 100
+}
+```
+* type=3：重设该键值的过期时间
+```json
+{
+    "type": 3,
+    "ddl": 1690475810
+}
+```
+key：键；type：保存类型；value：值；incr：累加值（正负整数）；ttl：有效时间（秒）（当ttl=0时，键值不会过期）
 #### 成功响应
 ```json
 {
-  "code": 1000,
-  "data": 1690475805
+  "code": 1000
 }
-``` 
-data：键值的过期日期（秒级时间戳）
+```
 ***
 
 > `DELETE` http://127.0.0.1:8000/v2/kv/{namespace}/{key} 删除键值

@@ -99,10 +99,12 @@ func broadcast(msg []byte) {
 
 type KeyUpdateModel struct {
 	// 0-删除key、1-新建key
-	Method int    `json:"method"`
-	Key    string `json:"key"`
-	Value  string `json:"value"`
-	DDL    int64  `json:"ddl"`
+	Method   int    `json:"method"`
+	Key      string `json:"key"`
+	SaveType int    `json:"type"`
+	Value    string `json:"value"`
+	Incr     int64  `json:"incr"`
+	DDL      int64  `json:"ddl"`
 }
 
 func push(ci base.ConnInfo, al cluster.ApplyLogModel) {
@@ -120,10 +122,12 @@ func push(ci base.ConnInfo, al cluster.ApplyLogModel) {
 	}()
 	if al.Namespace == ci.Namespace {
 		ku := KeyUpdateModel{
-			Method: al.Method,
-			Key:    al.Key,
-			Value:  al.Value,
-			DDL:    al.DDL,
+			Method:   al.Method,
+			Key:      al.Key,
+			SaveType: al.SaveType,
+			Value:    al.Value,
+			Incr:     al.Incr,
+			DDL:      al.DDL,
 		}
 		if len(ci.KeyPrefix) == 0 {
 			// 回写请求

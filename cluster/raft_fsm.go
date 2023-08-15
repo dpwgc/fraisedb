@@ -39,7 +39,7 @@ func (c *StorageFSM) Apply(log *raft.Log) interface{} {
 		err = base.NodeDB.DeleteKV(al.Namespace, al.Key)
 		break
 	case 1:
-		err = base.NodeDB.PutKV(al.Namespace, al.Key, al.Value, al.DDL)
+		err = base.NodeDB.PutKV(al.Namespace, al.Key, al.SaveType, al.Value, al.Incr, al.DDL)
 		break
 	case 10:
 		err = base.NodeDB.DeleteNamespace(al.Namespace)
@@ -74,7 +74,7 @@ func (c *StorageFSM) Restore(rc io.ReadCloser) error {
 		if err != nil {
 			return err
 		}
-		err = base.NodeDB.PutKV(kvSnap.Namespace, kvSnap.Key, kvSnap.Value, kvSnap.DDL)
+		err = base.NodeDB.PutKV(kvSnap.Namespace, kvSnap.Key, 0, kvSnap.Value, 0, kvSnap.DDL)
 		if err != nil {
 			return err
 		}
